@@ -21,8 +21,8 @@ const SB_URL="https://qhvagjrhkmzioqirbumr.supabase.co",SB_KEY="sb_publishable_c
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const val=id=>($("#"+id)||{}).value,num=id=>parseInt(val(id))||0;
-let me,ms=[],pend=[],msg="";
-function setMsg(t){msg=t;const e=$("#msg");if(e)e.textContent=t}
+let me,ms=[],pend=[],users=[],PAY={},msg="";
+function setMsg(t){msg=t;document.querySelectorAll(".msg").forEach(e=>e.textContent=t)}
 async function rpc(n,a){const{error}=await sb.rpc(n,a);await load();setMsg(error?"❌ "+error.message:"✓ হয়েছে")}
 async function load(){
   const{data:{user}}=await sb.auth.getUser();
@@ -31,7 +31,7 @@ async function load(){
   if(me&&me.is_admin){
     ms=(await sb.from("matches").select("*,entries(user_id,game_names,profiles(name,uid))").neq("status","done").order("id",{ascending:false})).data||[];
     const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>m.room=(rooms.find(r=>r.match_id===m.id)||{}).room);
-    pend=(await sb.from("deposits").select("*,profiles(name,uid)").eq("status","pending").order("id")).data||[];
+    pend=(await sb.from("deposits").select("*,profiles(name,uid)").eq("status","pending").order("id")).data||[];users=(await sb.rpc("admin_users")).data||[];PAY={};((await sb.from("settings").select("*")).data||[]).forEach(s=>PAY[s.key]=s.value);
   }
   render();
 }
@@ -43,7 +43,7 @@ function render(){
   if(!me){v.innerHTML='<div class="card"><input id="em" type="email" placeholder="অ্যাডমিন ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড"><button class="p" style="width:100%" data-a="in">লগইন</button>'+M+'</div>';return}
   if(!me.is_admin){v.innerHTML='<div class="card">এই অ্যাকাউন্ট অ্যাডমিন নয়।<br><br><button class="r" data-a="out">লগআউট</button></div>';return}
   v.innerHTML='<div class="card"><b>পেন্ডিং ডিপজিট ('+pend.length+')</b><div class="mu">bKash/Nagad/Rocket অ্যাপে TrxID ও পরিমাণ মিলিয়ে Approve করুন</div>'+(pend.map(d=>'<div class="tx"><span>'+esc(d.profiles&&d.profiles.name)+' · '+esc(d.method)+'<br><b>'+esc(d.trx_id)+'</b></span><span>৳'+d.amount+' <button class="g" data-a="ok" data-i="'+d.id+'">Approve</button></span></div>').join("")||'<div class="mu" style="margin-top:8px">কিছু নেই</div>')+'</div>'+
-  '<div class="card"><b>নতুন ম্যাচ</b><input id="c1" placeholder="নাম (BR SOLO MATCH)"><input id="c2" type="datetime-local"><input id="c3" value="Bermuda"><select id="c4"><option>Solo</option><option>Duo</option><option>Squad</option></select><input id="c5" type="number" placeholder="Total Prize"><input id="c6" type="number" placeholder="Per Kill"><input id="c7" type="number" placeholder="Entry Fee"><input id="c8" type="number" value="48"><button class="p" style="width:100%" data-a="mk">তৈরি করুন</button>'+M+'</div><h2>চলমান ম্যাচ</h2>'+(ms.map(mcard).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+'<button class="r" data-a="out">লগআউট</button>';
+  '<div class="card"><b>নতুন ম্যাচ</b><input id="c1" placeholder="নাম (BR SOLO MATCH)"><input id="c2" type="datetime-local"><input id="c3" value="Bermuda"><select id="c4"><option>Solo</option><option>Duo</option><option>Squad</option></select><input id="c5" type="number" placeholder="Total Prize"><input id="c6" type="number" placeholder="Per Kill"><input id="c7" type="number" placeholder="Entry Fee"><input id="c8" type="number" value="48"><button class="p" style="width:100%" data-a="mk">তৈরি করুন</button>'+M+'</div><h2>চলমান ম্যাচ</h2>'+(ms.map(mcard).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+'<div class="card"><b>পেমেন্ট নম্বর (প্লেয়াররা দেখবে)</b><input id="pb" placeholder="bKash নম্বর" value="'+esc(PAY.bkash)+'"><input id="pn" placeholder="Nagad নম্বর" value="'+esc(PAY.nagad)+'"><input id="pr" placeholder="Rocket নম্বর" value="'+esc(PAY.rocket)+'"><button class="p" style="width:100%" data-a="savepay">নম্বর সেভ করুন</button>'+M+'</div><h2>ইউজার ('+users.length+')</h2><div class="card">'+(users.map(u=>'<div class="tx"><span><b>'+esc(u.name)+'</b> · #'+esc(u.uid)+'<br><span class="mu">'+esc(u.email)+'</span></span><span>৳'+u.balance+'<br><span class="mu">ম্যাচ '+u.matches+'</span></span></div>').join("")||'<div class="mu">কেউ নেই</div>')+'</div>'+'<button class="r" data-a="out">লগআউট</button>';
 }
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,i=b.dataset.i,m=ms.find(x=>String(x.id)===i);
@@ -53,6 +53,7 @@ document.addEventListener("click",async e=>{
   else if(a==="prize"){if(!val("w"+i)||num("a"+i)<=0)return setMsg("বিজয়ী ও প্রাইজ দিন");rpc("pay_prize",{mid:+i,uid:val("w"+i),amt:num("a"+i)})}
   else if(a==="room"){const r=await sb.from("rooms").upsert({match_id:+i,room:val("rm"+i)});await load();setMsg(r.error?"❌ "+r.error.message:"✓ Room সেভ হয়েছে")}
   else if(a==="st"){await sb.from("matches").update({status:b.dataset.s}).eq("id",i);load()}
+  else if(a==="savepay"){const r=await sb.from("settings").upsert([{key:"bkash",value:val("pb").trim()},{key:"nagad",value:val("pn").trim()},{key:"rocket",value:val("pr").trim()}]);await load();setMsg(r.error?"❌ "+r.error.message:"✓ নম্বর সেভ হয়েছে")}
   else if(a==="mk"){if(!val("c1")||!val("c2"))return setMsg("নাম ও সময় দিন");
     const r=await sb.from("matches").insert({title:val("c1"),starts:new Date(val("c2")).toISOString(),map:val("c3"),type:val("c4"),prize:num("c5"),kill:num("c6"),fee:num("c7"),slots:num("c8")||48});await load();setMsg(r.error?"❌ "+r.error.message:"✓ ম্যাচ তৈরি হয়েছে")}
 });

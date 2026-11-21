@@ -32,7 +32,7 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:
 <div id="sh"></div>
 <script>
 const SB_URL="https://qhvagjrhkmzioqirbumr.supabase.co",SB_KEY="sb_publishable_cB02gkNSLN-UjM6aWvIKuw_2QrjTgxz",PAY_NO="01605945787";
-const sb=supabase.createClient(SB_URL,SB_KEY);
+const sb=supabase.createClient(SB_URL,SB_KEY);let PAY={};
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=t=>t?new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
 const val=id=>($("#"+id)||{}).value;
@@ -44,7 +44,7 @@ async function load(){
   if(!user){me=null;return render()}
   me=(await sb.from("profiles").select("*").eq("id",user.id).single()).data;
   ms=(await sb.from("matches").select("*,entries(user_id)").order("id",{ascending:false})).data||[];
-  const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>m.room=(rooms.find(r=>r.match_id===m.id)||{}).room);
+  PAY={};((await sb.from("settings").select("*")).data||[]).forEach(s=>PAY[s.key]=s.value);const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>m.room=(rooms.find(r=>r.match_id===m.id)||{}).room);
   tx=(await sb.from("txns").select("*").eq("user_id",user.id).order("id",{ascending:false}).limit(20)).data||[];
   render();
 }
@@ -59,7 +59,7 @@ function render(){
   if(!me){v.innerHTML='<div class="card"><h3>'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</h3>'+(mode==="up"?'<input id="nm" placeholder="গেমার নাম">':'')+'<input id="em" type="email" placeholder="ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="auth">'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</button><p class="mu" data-a="mode" style="cursor:pointer">'+(mode==="in"?"নতুন? রেজিস্ট্রেশন করুন":"অ্যাকাউন্ট আছে? লগইন")+'</p>'+M+'</div>';return}
   if(tab==="home")v.innerHTML='<div class="card fire" data-a="t" data-v="list"><div><h3 style="margin:0">Free Fire Matches</h3><div class="mu">JOIN THE BATTLE</div></div><span class="badge">'+ms.filter(m=>m.status!=="done").length+'</span></div>';
   else if(tab==="list")v.innerHTML='<div class="tabs"><button class="'+(sub==="on"?"on":"")+'" data-a="sub" data-v="on">ONGOING</button><button class="'+(sub==="rs"?"on":"")+'" data-a="sub" data-v="rs">RESULTS</button></div>'+(ms.filter(m=>(m.status==="done")===(sub==="rs")).map(card).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+M;
-  else v.innerHTML='<div class="card"><h3 style="margin:0">'+esc(me.name)+'</h3><div class="mu">UID: '+me.uid+' · ম্যাচ '+me.matches+' · জেতা ৳'+me.winning+'</div></div><div class="card"><b>টাকা যোগ করুন</b><p class="mu">১) bKash / Nagad / Rocket-এ Send Money করুন:</p><div class="no">'+PAY_NO+'</div><p class="mu">২) নিচে পরিমাণ ও TrxID দিন</p><select id="dm"><option>bKash</option><option>Nagad</option><option>Rocket</option></select><input id="da" type="number" placeholder="পরিমাণ ৳"><input id="dt" placeholder="TrxID"><button class="g" style="width:100%" data-a="dep">সাবমিট</button>'+M+'</div><div class="card"><b>Statements</b>'+(tx.map(t=>'<div class="tx"><span>'+esc(t.note)+'<br><span class="mu">'+fmt(t.at)+'</span></span><b style="color:'+(t.amt>0?"var(--gr)":"var(--rd)")+'">'+(t.amt>0?"+":"")+t.amt+'</b></div>').join("")||'<div class="mu">কিছু নেই</div>')+'</div><button class="r" style="width:100%" data-a="out">লগআউট</button>';
+  else v.innerHTML='<div class="card"><h3 style="margin:0">'+esc(me.name)+'</h3><div class="mu">UID: '+me.uid+' · ম্যাচ '+me.matches+' · জেতা ৳'+me.winning+'</div></div><div class="card"><b>টাকা যোগ করুন</b><p class="mu">১) bKash / Nagad / Rocket-এ Send Money করুন:</p><div class="no" style="font-size:18px;line-height:1.8">'+["bKash","Nagad","Rocket"].map(k=>k+": "+(PAY[k.toLowerCase()]||PAY_NO)).join("<br>")+'</div><p class="mu">২) নিচে পরিমাণ ও TrxID দিন</p><select id="dm"><option>bKash</option><option>Nagad</option><option>Rocket</option></select><input id="da" type="number" placeholder="পরিমাণ ৳"><input id="dt" placeholder="TrxID"><button class="g" style="width:100%" data-a="dep">সাবমিট</button>'+M+'</div><div class="card"><b>Statements</b>'+(tx.map(t=>'<div class="tx"><span>'+esc(t.note)+'<br><span class="mu">'+fmt(t.at)+'</span></span><b style="color:'+(t.amt>0?"var(--gr)":"var(--rd)")+'">'+(t.amt>0?"+":"")+t.amt+'</b></div>').join("")||'<div class="mu">কিছু নেই</div>')+'</div><button class="r" style="width:100%" data-a="out">লগআউট</button>';
 }
 document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,i=b.dataset.i;
