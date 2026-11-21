@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARENA BD</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#0e1424;--cd:#172038;--ln:#27324f;--tx:#eef2ff;--mu:#8e9bc0;--ac:#06b6d4;--gr:#22c55e;--rd:#ef4444;--yl:#facc15;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Bengali",sans-serif}
+#app{max-width:480px;margin:0 auto;padding:env(safe-area-inset-top,0) 14px 90px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}header b{font-size:22px}
+.pill{background:#fff;color:#000;border-radius:20px;padding:6px 14px;font-weight:800}
+.card{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:14px;margin-bottom:12px}
+.fire{background:linear-gradient(120deg,#7c2d12,#1e293b);display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.badge{background:var(--yl);color:#000;border-radius:14px;padding:3px 10px;font-weight:800}
+button{border:0;border-radius:12px;padding:12px;font-size:15px;font-weight:700;color:#fff;background:var(--ln);cursor:pointer}
+button.on,button.p{background:var(--ac)}button.g{background:var(--gr)}button.r{background:var(--rd)}button:disabled{opacity:.5}
+input,select{width:100%;padding:11px;margin:4px 0 8px;border-radius:10px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font-size:16px}
+.tabs{display:flex;gap:8px;margin-bottom:10px}.tabs button{flex:1}
+.m{background:#fff;color:#111;border-radius:16px;padding:14px;margin-bottom:12px}.m h4{margin:0 0 4px}.m small{color:#555}
+.nums{display:flex;text-align:center;margin:12px 0}.nums div{flex:1}.nums b{display:block;font-size:28px}.nums div:first-child b{color:#16a34a}.nums span{font-size:11px;color:#666}
+.bar{height:8px;background:#e5e7eb;border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:#3b82f6}
+.rw{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
+.room{background:#fef9c3;border-radius:10px;padding:8px;margin-top:8px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--cd);border-top:1px solid var(--ln)}nav button{max-width:170px;flex:1}
+.tx{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--ln);font-size:14px}
+.mu{color:var(--mu);font-size:13px}.msg{color:var(--yl);font-size:14px;min-height:20px}
+.no{font-size:22px;font-weight:800;letter-spacing:1px;color:var(--yl)}
+.sheet{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;z-index:9}.sheet .card{width:100%;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+</style></head><body>
+<div id="app"><header><b>ARENA BD</b><span class="pill" id="bal"></span></header><main id="v">লোড হচ্ছে…</main></div>
+<nav id="nav" hidden><button data-a="t" data-v="home">🏠 হোম</button><button data-a="t" data-v="me">👤 প্রোফাইল</button></nav>
+<div id="sh"></div>
+<script>
+const SB_URL="https://qhvagjrhkmzioqirbumr.supabase.co",SB_KEY="sb_publishable_cB02gkNSLN-UjM6aWvIKuw_2QrjTgxz",PAY_NO="01605945787";
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=t=>t?new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+const val=id=>($("#"+id)||{}).value;
+let me,ms=[],tx=[],tab="home",sub="on",msg="",mode="in";
+function setMsg(t){msg=t;const e=$("#msg");if(e)e.textContent=t}
+async function rpc(n,a){const{error}=await sb.rpc(n,a);await load();setMsg(error?"❌ "+error.message:"✓ হয়েছে")}
+async function load(){
+  const{data:{user}}=await sb.auth.getUser();
+  if(!user){me=null;return render()}
+  me=(await sb.from("profiles").select("*").eq("id",user.id).single()).data;
+  ms=(await sb.from("matches").select("*,entries(user_id)").order("id",{ascending:false})).data||[];
+  const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>m.room=(rooms.find(r=>r.match_id===m.id)||{}).room);
+  tx=(await sb.from("txns").select("*").eq("user_id",user.id).order("id",{ascending:false}).limit(20)).data||[];
+  render();
+}
+function card(m){
+  const n=m.entries.length,j=m.entries.some(e=>e.user_id===me.id),done=m.status==="done";
+  const b=done?'<button disabled class="g">শেষ</button>':j?'<button disabled class="g">JOINED ✓</button>':n>=m.slots||m.status!=="open"?'<button disabled class="r">CLOSED</button>':'<button class="g" data-a="join" data-i="'+m.id+'">JOIN</button>';
+  return '<div class="m"><h4>'+esc(m.title)+'</h4><small>🕒 '+fmt(m.starts)+' · '+esc(m.map)+' · '+esc(m.type)+'</small><div class="nums"><div><span>TOTAL PRIZE</span><b>'+m.prize+'</b></div><div><span>PER KILL</span><b>'+m.kill+'</b></div><div><span>ENTRY FEE</span><b>'+m.fee+'</b></div></div><div class="bar"><i style="width:'+n/m.slots*100+'%"></i></div><div class="rw"><span>'+Math.max(0,m.slots-n)+' Players Need · '+n+'/'+m.slots+'</span>'+b+'</div>'+(j&&m.room&&!done?'<div class="room">🔑 Room: <b>'+esc(m.room)+'</b></div>':'')+(m.status==="playing"?'<div class="room">▶ ম্যাচ চলছে</div>':'')+(done&&m.winner?'<div class="room">🏆 বিজয়ী: '+esc(m.winner)+'</div>':'')+'</div>';
+}
+function render(){
+  const v=$("#v");$("#nav").hidden=!me;$("#bal").textContent=me?"৳ "+me.balance:"";
+  const M='<div class="msg" id="msg">'+esc(msg)+'</div>';
+  if(!me){v.innerHTML='<div class="card"><h3>'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</h3>'+(mode==="up"?'<input id="nm" placeholder="গেমার নাম">':'')+'<input id="em" type="email" placeholder="ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="auth">'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</button><p class="mu" data-a="mode" style="cursor:pointer">'+(mode==="in"?"নতুন? রেজিস্ট্রেশন করুন":"অ্যাকাউন্ট আছে? লগইন")+'</p>'+M+'</div>';return}
+  if(tab==="home")v.innerHTML='<div class="card fire" data-a="t" data-v="list"><div><h3 style="margin:0">Free Fire Matches</h3><div class="mu">JOIN THE BATTLE</div></div><span class="badge">'+ms.filter(m=>m.status!=="done").length+'</span></div>';
+  else if(tab==="list")v.innerHTML='<div class="tabs"><button class="'+(sub==="on"?"on":"")+'" data-a="sub" data-v="on">ONGOING</button><button class="'+(sub==="rs"?"on":"")+'" data-a="sub" data-v="rs">RESULTS</button></div>'+(ms.filter(m=>(m.status==="done")===(sub==="rs")).map(card).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+M;
+  else v.innerHTML='<div class="card"><h3 style="margin:0">'+esc(me.name)+'</h3><div class="mu">UID: '+me.uid+' · ম্যাচ '+me.matches+' · জেতা ৳'+me.winning+'</div></div><div class="card"><b>টাকা যোগ করুন</b><p class="mu">১) bKash / Nagad / Rocket-এ Send Money করুন:</p><div class="no">'+PAY_NO+'</div><p class="mu">২) নিচে পরিমাণ ও TrxID দিন</p><select id="dm"><option>bKash</option><option>Nagad</option><option>Rocket</option></select><input id="da" type="number" placeholder="পরিমাণ ৳"><input id="dt" placeholder="TrxID"><button class="g" style="width:100%" data-a="dep">সাবমিট</button>'+M+'</div><div class="card"><b>Statements</b>'+(tx.map(t=>'<div class="tx"><span>'+esc(t.note)+'<br><span class="mu">'+fmt(t.at)+'</span></span><b style="color:'+(t.amt>0?"var(--gr)":"var(--rd)")+'">'+(t.amt>0?"+":"")+t.amt+'</b></div>').join("")||'<div class="mu">কিছু নেই</div>')+'</div><button class="r" style="width:100%" data-a="out">লগআউট</button>';
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,i=b.dataset.i;
+  if(a==="t"){tab=b.dataset.v;msg="";render()}
+  else if(a==="sub"){sub=b.dataset.v;render()}
+  else if(a==="mode"){mode=mode==="in"?"up":"in";msg="";render()}
+  else if(a==="auth"){const em=val("em"),pw=val("pw");
+    const r=mode==="in"?await sb.auth.signInWithPassword({email:em,password:pw}):await sb.auth.signUp({email:em,password:pw,options:{data:{name:val("nm")||"Player"}}});
+    if(r.error)return setMsg("❌ "+r.error.message);await load()}
+  else if(a==="out"){await sb.auth.signOut();me=null;render()}
+  else if(a==="join"){const m=ms.find(x=>String(x.id)===i),k={Solo:1,Duo:2,Squad:4}[m.type]||1;
+    $("#sh").innerHTML='<div class="sheet"><div class="card"><b>'+esc(m.title)+'</b><div class="mu">Entry Fee: ৳'+m.fee+' · '+esc(m.type)+'</div>'+Array.from({length:k},(_,x)=>'<input class="gn" placeholder="Enter Game Name '+(x+1)+'" maxlength="24">').join("")+'<div class="msg" id="gmsg"></div><button class="g" style="width:100%" data-a="cf" data-i="'+i+'">CONFIRM</button><button style="width:100%;margin-top:8px" data-a="x">বাতিল</button></div></div>'}
+  else if(a==="x")$("#sh").innerHTML="";
+  else if(a==="cf"){const g=[...document.querySelectorAll(".gn")].map(x=>x.value.trim());if(g.some(x=>!x))return $("#gmsg").textContent="সব গেম নাম দিন";$("#sh").innerHTML="";rpc("join_match",{mid:+i,gnames:g.join(" + ")})}
+  else if(a==="dep"){const x=parseInt(val("da"))||0;if(x<10||!val("dt").trim())return setMsg("পরিমাণ ও TrxID দিন");rpc("submit_deposit",{trx:val("dt"),amt:x,method:val("dm")})}
+});
+load();
+</script></body></html>
