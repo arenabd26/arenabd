@@ -27,8 +27,9 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:
 .no{font-size:22px;font-weight:800;letter-spacing:1px;color:var(--yl)}
 .sheet{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;z-index:9}.sheet .card{width:100%;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .vm{background:#e0f2fe;color:#0369a1;border-radius:12px;padding:4px 12px;font-size:12px;margin:0 0 10px}.ch2{display:flex;gap:8px;margin-top:10px}.ch2 button{flex:1}.cb{padding:6px 14px;font-size:13px}.pre{white-space:pre-wrap;font-size:14px;line-height:1.6}
+.sl{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin-bottom:12px;border-radius:16px}.sl img{flex:0 0 100%;scroll-snap-align:center;width:100%;height:150px;object-fit:cover;border-radius:16px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mode{background:var(--cd);border:1px solid var(--ln);border-radius:14px;overflow:hidden;cursor:pointer;text-align:center;padding-bottom:8px}.mode img{width:100%;height:110px;object-fit:cover}.mn{font-weight:800;margin:6px 0 2px}
 </style></head><body>
-<div id="app"><header><b>ARENA BD</b><span class="pill" id="bal"></span></header><main id="v">লোড হচ্ছে…</main></div>
+<div id="app"><header><b id="ttl">ARENA BD</b><span class="pill" id="bal"></span></header><main id="v">লোড হচ্ছে…</main></div>
 <nav id="nav" hidden><button data-a="t" data-v="home">🏠 হোম</button><button data-a="t" data-v="me">👤 প্রোফাইল</button></nav>
 <div id="sh"></div>
 <script>
@@ -37,29 +38,32 @@ const sb=supabase.createClient(SB_URL,SB_KEY);let PAY={};
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=t=>t?new Date(t).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
 const val=id=>($("#"+id)||{}).value;
-let me,ms=[],tx=[],tab="home",sub="on",msg="",mode="in";
+let me,ms=[],tx=[],tab="home",sub="on",msg="",mode="in",modes=[],banners=[],cur=null;
 function setMsg(t){msg=t;const e=$("#msg");if(e)e.textContent=t}
 async function rpc(n,a){const{error}=await sb.rpc(n,a);await load();setMsg(error?"❌ "+error.message:"✓ হয়েছে")}
 async function load(){
-  const{data:{user}}=await sb.auth.getUser();
+  PAY={};((await sb.from("settings").select("*")).data||[]).forEach(s=>PAY[s.key]=s.value);const{data:{user}}=await sb.auth.getUser();
   if(!user){me=null;return render()}
   me=(await sb.from("profiles").select("*").eq("id",user.id).single()).data;
   ms=(await sb.from("matches").select("*,entries(user_id)").order("id",{ascending:false})).data||[];
-  PAY={};((await sb.from("settings").select("*")).data||[]).forEach(s=>PAY[s.key]=s.value);const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>{const r=rooms.find(r=>r.match_id===m.id)||{};m.room=r.room;m.rpass=r.password});
+  PAY={};((await sb.from("settings").select("*")).data||[]).forEach(s=>PAY[s.key]=s.value);modes=(await sb.from("modes").select("*").order("sort")).data||[];banners=(await sb.from("banners").select("*").order("sort")).data||[];const rooms=(await sb.from("rooms").select("*")).data||[];ms.forEach(m=>{const r=rooms.find(r=>r.match_id===m.id)||{};m.room=r.room;m.rpass=r.password});
   tx=(await sb.from("txns").select("*").eq("user_id",user.id).order("id",{ascending:false}).limit(20)).data||[];
   render();
 }
+function slider(){if(!banners.length)return"";return '<div class="sl" id="sl">'+banners.map(b=>'<img src="'+esc(b.image_url)+'" data-a="bn" data-v="'+esc(b.link||"")+'" alt="">').join("")+'</div>'}
+setInterval(()=>{const s=$("#sl");if(s&&s.clientWidth){const w=s.clientWidth,n=Math.round(s.scrollLeft/w)+1;s.scrollTo({left:n*w>=s.scrollWidth-2?0:n*w,behavior:"smooth"})}},4000);
 function card(m){
   const n=m.entries.length,j=m.entries.some(e=>e.user_id===me.id),done=m.status==="done";
   const b=done?'<button disabled class="g">শেষ</button>':j?'<button disabled class="g">JOINED ✓</button>':n>=m.slots||m.status!=="open"?'<button disabled class="r">CLOSED</button>':'<button class="g" data-a="join" data-i="'+m.id+'">JOIN</button>';
   return '<div class="m"><h4>'+esc(m.title)+'</h4><small>🕒 '+fmt(m.starts)+' · '+esc(m.map)+' · '+esc(m.type)+'</small><div class="nums"><div><span>TOTAL PRIZE</span><b>'+m.prize+'</b></div><div><span>PER KILL</span><b>'+m.kill+'</b></div><div><span>ENTRY FEE</span><b>'+m.fee+'</b></div></div><button class="vm" data-a="pz" data-i="'+m.id+'">VIEW MORE</button><div class="bar"><i style="width:'+n/m.slots*100+'%"></i></div><div class="rw"><span>'+Math.max(0,m.slots-n)+' Players Need · '+n+'/'+m.slots+'</span></div><div class="ch2"><button class="p" data-a="rd" data-i="'+m.id+'">ROOM DETAILS</button>'+b+'</div>'+(m.status==="playing"?'<div class="room">▶ ম্যাচ চলছে</div>':'')+(done&&m.winner?'<div class="room">🏆 বিজয়ী: '+esc(m.winner)+'</div>':'')+'</div>';
 }
 function render(){
-  const v=$("#v");$("#nav").hidden=!me;$("#bal").textContent=me?"৳ "+me.balance:"";
+  const v=$("#v");$("#ttl").innerHTML=(PAY.logo?'<img src="'+esc(PAY.logo)+'" style="height:32px;vertical-align:middle;margin-right:8px;border-radius:8px">':"")+esc(PAY.app_name||"ARENA BD");$("#nav").hidden=!me;$("#bal").textContent=me?"৳ "+me.balance:"";
   const M='<div class="msg" id="msg">'+esc(msg)+'</div>';
   if(!me){v.innerHTML='<div class="card"><h3>'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</h3>'+(mode==="up"?'<input id="nm" placeholder="গেমার নাম">':'')+'<input id="em" type="email" placeholder="ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="auth">'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</button><p class="mu" data-a="mode" style="cursor:pointer">'+(mode==="in"?"নতুন? রেজিস্ট্রেশন করুন":"অ্যাকাউন্ট আছে? লগইন")+'</p>'+M+'</div>';return}
-  if(tab==="home")v.innerHTML='<div class="card fire" data-a="t" data-v="list"><div><h3 style="margin:0">Free Fire Matches</h3><div class="mu">JOIN THE BATTLE</div></div><span class="badge">'+ms.filter(m=>m.status!=="done").length+'</span></div>';
-  else if(tab==="list")v.innerHTML='<div class="tabs"><button class="'+(sub==="on"?"on":"")+'" data-a="sub" data-v="on">ONGOING</button><button class="'+(sub==="rs"?"on":"")+'" data-a="sub" data-v="rs">RESULTS</button></div>'+(ms.filter(m=>(m.status==="done")===(sub==="rs")).map(card).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+M;
+  if(tab==="home")v.innerHTML=slider()+'<div class="card fire" data-a="t" data-v="modes"><div><h3 style="margin:0">Free Fire Matches</h3><div class="mu">JOIN THE BATTLE</div></div><span class="badge">'+ms.filter(m=>m.status!=="done").length+'</span></div>';
+  else if(tab==="modes")v.innerHTML='<div class="mu" data-a="t" data-v="home" style="cursor:pointer;margin-bottom:8px">← হোম</div><div class="grid">'+modes.map(md=>'<div class="mode" data-a="pm" data-i="'+md.id+'"><img src="'+esc(md.image_url)+'" alt=""><div class="mn">'+esc(md.name)+'</div><div class="mu">'+ms.filter(m=>m.mode_id===md.id&&m.status!=="done").length+' matches available</div></div>').join("")+'</div>'+(modes.length?"":'<div class="mu">অ্যাডমিন এখনো কোনো মোড যোগ করেননি।</div>');
+  else if(tab==="list")v.innerHTML='<div class="mu" data-a="t" data-v="modes" style="cursor:pointer;margin-bottom:8px">← মোড বাছুন</div><div class="tabs"><button class="'+(sub==="on"?"on":"")+'" data-a="sub" data-v="on">ONGOING</button><button class="'+(sub==="rs"?"on":"")+'" data-a="sub" data-v="rs">RESULTS</button></div>'+(ms.filter(m=>m.mode_id===cur&&(m.status==="done")===(sub==="rs")).map(card).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+M;
   else v.innerHTML='<div class="card"><h3 style="margin:0">'+esc(me.name)+'</h3><div class="mu">UID: '+me.uid+' · ম্যাচ '+me.matches+' · জেতা ৳'+me.winning+'</div></div><div class="card"><b>টাকা যোগ করুন</b><p class="mu">১) bKash / Nagad / Rocket-এ Send Money করুন:</p><div class="no" style="font-size:18px">'+["bKash","Nagad","Rocket"].map(k=>{const n=PAY[k.toLowerCase()]||PAY_NO;return '<div class="rw" style="margin:6px 0"><span>'+k+': '+n+'</span><button class="p cb" data-a="cp" data-v="'+n+'">কপি</button></div>'}).join("")+'</div><p class="mu">২) নিচে পরিমাণ ও TrxID দিন</p><select id="dm"><option>bKash</option><option>Nagad</option><option>Rocket</option></select><input id="da" type="number" placeholder="পরিমাণ ৳"><input id="dt" placeholder="TrxID"><button class="g" style="width:100%" data-a="dep">সাবমিট</button>'+M+'</div><div class="card"><b>Statements</b>'+(tx.map(t=>'<div class="tx"><span>'+esc(t.note)+'<br><span class="mu">'+fmt(t.at)+'</span></span><b style="color:'+(t.amt>0?"var(--gr)":"var(--rd)")+'">'+(t.amt>0?"+":"")+t.amt+'</b></div>').join("")||'<div class="mu">কিছু নেই</div>')+'</div><button class="r" style="width:100%" data-a="out">লগআউট</button>';
 }
 document.addEventListener("click",async e=>{
@@ -73,6 +77,8 @@ document.addEventListener("click",async e=>{
   else if(a==="out"){await sb.auth.signOut();me=null;render()}
   else if(a==="join"){const m=ms.find(x=>String(x.id)===i),k={Solo:1,Duo:2,Squad:4}[m.type]||1;
     $("#sh").innerHTML='<div class="sheet"><div class="card"><b>'+esc(m.title)+'</b><div class="mu">Entry Fee: ৳'+m.fee+' · '+esc(m.type)+'</div>'+Array.from({length:k},(_,x)=>'<input class="gn" placeholder="Enter Game Name '+(x+1)+'" maxlength="24">').join("")+'<div class="msg" id="gmsg"></div><button class="g" style="width:100%" data-a="cf" data-i="'+i+'">CONFIRM</button><button style="width:100%;margin-top:8px" data-a="x">বাতিল</button></div></div>'}
+  else if(a==="pm"){cur=+i;tab="list";sub="on";render()}
+  else if(a==="bn"){if(b.dataset.v)window.open(b.dataset.v,"_blank")}
   else if(a==="pz"){const m=ms.find(x=>String(x.id)===i);$("#sh").innerHTML='<div class="sheet"><div class="card"><b>🏆 Prize Pool</b><div class="mu">'+esc(m.title)+'</div>'+(m.prizes||"").split("\n").filter(x=>x.trim()).map(x=>'<div class="tx"><span>'+esc(x)+'</span></div>').join("")+'<div class="tx"><span>🔥 Per Kill</span><b>'+m.kill+' Taka</b></div><div class="tx"><span>🏆 Total Prize Pool</span><b>'+m.prize+' Taka</b></div><button style="width:100%;margin-top:10px" data-a="x">বন্ধ করুন</button></div></div>'}
   else if(a==="rd"){const m=ms.find(x=>String(x.id)===i),j=m.entries.some(e=>e.user_id===me.id);
     const rm=!j?'<div class="mu">Join করলে রুমের তথ্য এখানে দেখতে পাবেন।</div>':!m.room?'<div class="mu">অ্যাডমিন এখনো রুম আইডি দেননি।</div>':[["Room ID",m.room],["Password",m.rpass||"-"]].map(p=>'<div class="rw" style="margin:6px 0"><span>'+p[0]+': <b>'+esc(p[1])+'</b></span><button class="p cb" data-a="cp" data-v="'+esc(p[1])+'">কপি</button></div>').join("");
