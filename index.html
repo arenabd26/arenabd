@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="bn"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ARENA BD</title>
+<title>ARENA BD – Free Fire টুর্নামেন্ট অ্যাপ</title>
+<meta name="description" content="ARENA BD: Free Fire টুর্নামেন্ট। Solo, Duo ও Squad ম্যাচে জয়েন করুন, কিলে ও পজিশনে প্রাইজ জিতুন।">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="ARENA BD – Free Fire টুর্নামেন্ট অ্যাপ">
+<meta property="og:description" content="Solo, Duo ও Squad ম্যাচে জয়েন করুন, প্রাইজ জিতুন।">
+<meta property="og:type" content="website">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
 :root{--bg:#0e1424;--cd:#172038;--ln:#27324f;--tx:#eef2ff;--mu:#8e9bc0;--ac:#06b6d4;--gr:#22c55e;--rd:#ef4444;--yl:#facc15;color-scheme:dark}
@@ -74,7 +79,7 @@ function render(){
   const v=$("#v");$("#ttl").innerHTML=(PAY.logo?'<img src="'+esc(PAY.logo)+'" style="height:32px;vertical-align:middle;margin-right:8px;border-radius:8px">':"")+esc(PAY.app_name||"ARENA BD");$("#nav").hidden=!me;let un=0;try{const sn=+localStorage.getItem("seen")||0;un=notes.filter(n=>n.id>sn).length}catch(e){}$("#bell").innerHTML="🔔"+(un?"<i>"+un+"</i>":"");$("#bell").hidden=!me;$("#bal").textContent=me?"৳ "+me.balance:"";
   const M='<div class="msg" id="msg">'+esc(msg)+'</div>';
   if(rec){v.innerHTML='<div class="card"><h3>নতুন পাসওয়ার্ড দিন</h3><input id="rp" type="password" placeholder="নতুন পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="rp2">সেভ করুন</button>'+M+'</div>';return}
-  if(!me){v.innerHTML='<div class="card"><h3>'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</h3>'+(mode==="up"?'<input id="nm" placeholder="গেমার নাম">':'')+'<input id="em" type="email" placeholder="ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="auth">'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</button><p class="mu" data-a="mode" style="cursor:pointer">'+(mode==="in"?"নতুন? রেজিস্ট্রেশন করুন":"অ্যাকাউন্ট আছে? লগইন")+'</p>'+(mode==="in"?'<p class="mu" data-a="fg" style="cursor:pointer">পাসওয়ার্ড ভুলে গেছেন?</p>':'')+M+'</div>';return}
+  if(!me){v.innerHTML='<div class="card"><h3>'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</h3><div class="mu" style="margin-bottom:8px">Free Fire টুর্নামেন্ট · ম্যাচে জয়েন করুন, প্রাইজ জিতুন</div>'+(mode==="up"?'<input id="nm" placeholder="গেমার নাম">':'')+'<input id="em" type="email" placeholder="ইমেইল"><input id="pw" type="password" placeholder="পাসওয়ার্ড (৬+)"><button class="p" style="width:100%" data-a="auth">'+(mode==="in"?"লগইন":"রেজিস্ট্রেশন")+'</button><p class="mu" data-a="mode" style="cursor:pointer">'+(mode==="in"?"নতুন? রেজিস্ট্রেশন করুন":"অ্যাকাউন্ট আছে? লগইন")+'</p>'+(mode==="in"?'<p class="mu" data-a="fg" style="cursor:pointer">পাসওয়ার্ড ভুলে গেছেন?</p>':'')+M+'</div>';return}
   if(tab==="home")v.innerHTML=slider()+notice()+'<div class="card fire" data-a="t" data-v="modes"><div><h3 style="margin:0">Free Fire Matches</h3><div class="mu">JOIN THE BATTLE</div></div><span class="badge">'+ms.filter(m=>m.status!=="done").length+'</span></div>'+support();
   else if(tab==="modes")v.innerHTML='<div class="mu" data-a="t" data-v="home" style="cursor:pointer;margin-bottom:8px">← হোম</div><div class="grid">'+modes.map(md=>'<div class="mode" data-a="pm" data-i="'+md.id+'"><img src="'+esc(md.image_url)+'" alt=""><div class="mn">'+esc(md.name)+'</div><div class="mu">'+ms.filter(m=>m.mode_id===md.id&&m.status!=="done").length+' matches available</div></div>').join("")+'</div>'+(modes.length?"":'<div class="mu">অ্যাডমিন এখনো কোনো মোড যোগ করেননি।</div>');
   else if(tab==="list")v.innerHTML='<div class="mu" data-a="t" data-v="modes" style="cursor:pointer;margin-bottom:8px">← মোড বাছুন</div><div class="tabs"><button class="'+(sub==="on"?"on":"")+'" data-a="sub" data-v="on">ONGOING</button><button class="'+(sub==="rs"?"on":"")+'" data-a="sub" data-v="rs">RESULTS</button></div>'+(ms.filter(m=>m.mode_id===cur&&(m.status==="done")===(sub==="rs")).map(card).join("")||'<div class="mu">কোনো ম্যাচ নেই</div>')+M;
